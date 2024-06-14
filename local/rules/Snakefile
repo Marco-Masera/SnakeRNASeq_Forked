@@ -1,0 +1,43 @@
+#
+# RNA-seq analysis pipeline
+#
+# --------------#
+# Configuration #
+# --------------#
+import os
+
+configfile: "config.yaml"
+
+REFERENCE_ROOT=os.environ.get("REFERENCE_ROOT")
+
+# GENERAL SETUP ---
+CONDA_ROOT=config["CONDA_ROOT"]
+CONDA_ACTIVATE="set +u; source %s/etc/profile.d/conda.sh ; conda activate ; conda activate" % config["CONDA_ROOT"]
+
+# GENCODE ---
+GENCODE_DIR=REFERENCE_ROOT+"/bioinfotree/task/gencode/dataset/"+config["GENCODE"]["SPECIES"]+"/"+config["GENCODE"]["VERSION"]
+GENCODE_GENOME_FASTA=GENCODE_DIR+"/"+config["GENCODE"]["GENOME"]+".genome.fa"
+GENCODE_ANNOTATION_GTF=GENCODE_DIR+"/"+config["GENCODE"]["ANNOTATION"]+".gtf"
+GENCODE_ANNOTATION_BED=GENCODE_DIR+"/"+config["GENCODE"]["ANNOTATION"]+".bed"
+
+# LAYOUT ---
+if config["LAYOUT"] == "SINGLE":
+	ruleorder: umitools_extract_se > umitools_extract_pe
+	ruleorder: trimgalore_se > trimgalore_pe
+elif config["LAYOUT"] == "PAIRED":
+	ruleorder: umitools_extract_pe > umitools_extract_se
+	ruleorder: trimgalore_pe > trimgalore_se
+
+# Samples ---
+FASTQ_FILES, = glob_wildcards("fastq/{sample}.fastq.gz")
+FASTQ_SAMPLES, = glob_wildcards("fastq/{sample}_R1_001.fastq.gz")
+
+# Include modules ---
+include: "../../local/rules/generic_rules.smk"
+
+
+if os.path.exists("Snakefile_versioned.sk"):
+    include: "Snakefile_versioned.sk"
+
+
+# Rule ALL ---
