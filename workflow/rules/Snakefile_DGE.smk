@@ -19,8 +19,6 @@ CONDA_ROOT=config["CONDA_ROOT"]
 CONDA_ACTIVATE="set +u; source %s/etc/profile.d/conda.sh ; conda activate ; conda activate" % config["CONDA_ROOT"]
 RAW_DATA_DIR= ["."]
 
-#TODO aggiungere counts_table2eset e append_each_row -> ora hanno env, ma in teoria non serve per forza
-
 rule all:
     input:
         "edger.toptable_clean.ALL_contrast.mark_seqc.exp_in_condition.header_added.gz"
@@ -31,8 +29,6 @@ rule get_eset:
         metadata = "../metadata.txt"
     output:
         "eset.rda"
-    conda:
-        "../../../local/env/bit_rnaseq_3_backup.yaml"
     shell:"""
         counts_table2eset {input.gep} {input.metadata} > {output}
     """
@@ -49,8 +45,6 @@ rule get_rdata:
         factors = config["DGE"]["LIMMA_FACTORS"],
         formula = config["DGE"]["LIMMA_DESIGN_FORMULA"],
         contrasts = list(config["DGE"]["LIMMA_CONTRASTS"].values())
-    conda:
-        "../../../local/env/bit_rnaseq_3.yaml"
     shell:"""
         eset2toptable -t {params.dge_tool} -l {params.min_cpm} -n {params.min_samples} {params.factors} {input} {params.formula} {params.contrasts} > {output}
     """
@@ -76,8 +70,6 @@ rule run_DGE:
         contrast_names = list(config["DGE"]["LIMMA_CONTRASTS"].keys()),
         contrasts = list(config["DGE"]["LIMMA_CONTRASTS"].values()),
         dge_tool = config["DGE"]["DGE_TOOL"] 
-    conda:    
-        "../../../local/env/bit_rnaseq_3.yaml"
     shell:"""
         C=$(\
             (\
@@ -108,8 +100,6 @@ rule all_contrasts:
         "{path}.toptable_clean.ALL_contrast.gz"
     params:
         contrast=list(config["DGE"]["LIMMA_CONTRASTS"].keys())
-    conda:
-        "../../../local/env/bit_rnaseq_3.yaml"
     shell:"""
         for i in {params.contrast}; do
             zcat {wildcards.path}.toptable_clean.contrast_$i.gz | append_each_row -B $i;

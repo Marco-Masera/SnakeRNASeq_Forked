@@ -6,11 +6,11 @@
 # --------------#
 import os
 PRJ_ROOT=os.environ.get("PRJ_ROOT")
-configfile: "config.yaml"
 if os.path.exists("Snakefile_versioned.sk"):
 	include: "Snakefile_versioned.sk"
 
 configfile: "config_DGE.yaml"
+configfile: "config.yaml"
 
 REFERENCE_ROOT=os.environ.get("REFERENCE_ROOT")
 
@@ -47,10 +47,13 @@ if config["LAYOUT"] == "SINGLE":
 	ruleorder: fastp_se > fastp_pe
 	ruleorder: trim_galore_se > trim_galore_pe
 	ruleorder: star_align_se > star_pe_multi
+	ruleorder: star_align_pe > star_pe_multi
 elif config["LAYOUT"] == "PAIRED":
 	ruleorder: fastp_pe > fastp_se
 	ruleorder: trim_galore_pe > trim_galore_se
 	ruleorder: star_pe_multi > star_align_se
+	ruleorder: star_align_pe > star_pe_multi
+	ruleorder: star_align_pe > star_align_se
 
 # STAR ---
 STAR_VERSION = shell("STAR --version", read=True).strip()
@@ -67,6 +70,7 @@ include: "../../workflow/rules/generic_rules.smk"
 # ---------------------- #
 rule all:
 	input: 
+		"GEP.count.gz",
 		"GEP.count.exp_filter.ltmm.gz.xlsx",
 		"multiqc_report.html",
 		"multiqc_report.rseqc.html",
@@ -131,43 +135,44 @@ rule star_pe_multi:
 		"v3.3.6/bio/star/align"
 
 
-#TODO check if this works correctly
-# rule star_align_pe:
-#     input:
-#         fq1 = "fastq/{sample}_R1.fastq.gz",
-#         fq2 = "fastq/{sample}_R2.fastq.gz",
-#     output:
-#         aln="star/{sample}.bam",
-#         log="star/{sample}.Log.out",
-#         sj="star/{sample}.SJ.out.tab,
-#     threads: config["CORES"]
-#     params:
-#         genome_dir = STAR_GENOME_DIR,
-#         tmpdir="star/{sample}"
-#         out_sam_type = config["STAR"]["OUT_SAM_TYPE"],
-#         out_filter_multimap_nmax = config["STAR"]["OUT_FILTER_MULTIMAP_NMAX"],
-#         out_filter_multimap_score_range = config["STAR"]["MULTIMAP_SCORE_RANGE"],
-#         filter_mismatch = config["STAR"]["FILTER_MISMATCH"],
-#         additional_output = config["STAR"]["ADDITIONAL_OUTPUT"]
-#     shell:
-#         """
-#         mkdir -p {params.tmpdir};
-#         STAR \
-#             --genomeDir {params.genome_dir} \
-#             --genomeLoad LoadAndKeep \
-#             --runThreadN {threads} \
-#             --readFilesIn {input.fq1} {input.fq2} \
-#             --readFilesCommand zcat \
-#             --outFileNamePrefix star/{wildcards.sample}. \
-#             --outSAMtype {params.out_sam_type} \
-#             --outTmpDir {params.tmpdir}/STARtmp \
-#             --limitBAMsortRAM 10000000000 \
-#             --outSAMunmapped Within \
-#             --outFilterMultimapNmax {params.out_filter_multimap_nmax} \
-#             --outFilterMultimapScoreRange {params.out_filter_multimap_score_range} \
-#             {params.filter_mismatch} \
-#             {params.additional_output}
-#         """
+rule star_align_pe:
+    input:
+        fq1 = config['FASTQ_FILTERING']+"/{sample}_R1.fastq.gz",
+        fq2 = config['FASTQ_FILTERING']+"/{sample}_R2.fastq.gz",
+    output:
+        aln="star/{sample}.bam",
+        log="star/{sample}.Log.out",
+        sj="star/{sample}.SJ.out.tab",
+    threads: config["CORES"]
+    params:
+        genome_dir = STAR_GENOME_DIR,
+        tmpdir="star/{sample}",
+        out_sam_type = config["STAR"]["OUT_SAM_TYPE"],
+        out_filter_multimap_nmax = config["STAR"]["OUT_FILTER_MULTIMAP_NMAX"],
+        out_filter_multimap_score_range = config["STAR"]["MULTIMAP_SCORE_RANGE"],
+        filter_mismatch = config["STAR"]["FILTER_MISMATCH"],
+        additional_output = config["STAR"]["ADDITIONAL_OUTPUT"]
+    shell:
+        """
+        mkdir -p {params.tmpdir};
+        STAR \
+            --genomeDir {params.genome_dir} \
+            --genomeLoad LoadAndKeep \
+            --runThreadN {threads} \
+            --readFilesIn {input.fq1} {input.fq2} \
+            --readFilesCommand zcat \
+            --outFileNamePrefix star/{wildcards.sample}. \
+            --outSAMtype {params.out_sam_type} \
+            --outTmpDir {params.tmpdir}/STARtmp \
+            --limitBAMsortRAM 10000000000 \
+            --outSAMunmapped Within \
+            --outFilterMultimapNmax {params.out_filter_multimap_nmax} \
+            --outFilterMultimapScoreRange {params.out_filter_multimap_score_range} \
+            {params.filter_mismatch} \
+            {params.additional_output}
+		mv star/{wildcards.sample}.Aligned.sortedByCoord.out.bam {output.aln}
+		"""
+
 
 rule star_align_se:
 	input:
@@ -293,7 +298,7 @@ rule fastp_pe:
 	log:
 		"fastp/{sample}.log"
 	params:
-		adapters="--adapter_sequence=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_sequence_r2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
+		#adapters="--adapter_sequence=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_sequence_r2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
 		#extra="--merge"
 		extra=""
 	threads: 4
