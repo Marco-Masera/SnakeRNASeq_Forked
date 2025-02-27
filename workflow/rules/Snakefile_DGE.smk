@@ -21,7 +21,23 @@ RAW_DATA_DIR= ["."]
 
 rule all:
     input:
-        "edger.toptable_clean.ALL_contrast.mark_seqc.exp_in_condition.header_added.gz"
+        f"{config['DGE']['DGE_TOOL']}.toptable_clean.ALL_contrast.mark_seqc.exp_in_condition.header_added.gz"
+
+
+
+rule run_degw:
+    input:
+        expression="../GEP.count.gz",
+        metadata="../metadata.txt"
+    output:
+        "degw_contrast.csv"
+    params:
+        formula = config["DGE"]["LIMMA_DESIGN_FORMULA"]
+    shell:
+        """
+            echo $(tail -n +2 {input.metadata} | cut -f2 | sort | uniq) |  \
+            xargs bash -c 'DegWilcox {input.expression} {input.metadata} --condition=condition --g1=$1 --g2=$2 > {output}' _ 
+        """
 
 rule get_eset:
     input:

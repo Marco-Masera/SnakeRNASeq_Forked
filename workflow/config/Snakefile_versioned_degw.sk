@@ -1,0 +1,85 @@
+rule csv_from_gz_cut:
+    input:
+        "{file}.gz"
+    output:
+        "{file}.csv"
+    shell:
+        """
+            gzip -d -c {input} | cut -f2,4,5 > {output}
+        """
+
+rule csv_from_gz:
+    input:
+        "GEP.{file}.gz"
+    output:
+        "GEP.{file}.csv"
+    shell:
+        """
+            gzip -d -c {input} > {output}
+        """
+
+ruleorder: csv_from_gz > csv_from_gz_cut
+
+rule get_results_diff:
+    input:
+        main="DGE/{tool}.toptable_clean.ALL_contrast.mark_seqc.header_added.csv",
+        control="DGE/degw_contrast.csv"
+    output:
+        "diff/{tool}_diff.csv"
+    shell:
+        """
+            mkdir -p diff
+            get_diff.py {input.main} {input.control} > {output}
+        """
+
+rule best_N_diff:
+    input:
+        "diff/{tool}_diff.csv"
+    output:
+        "diff/{tool}_diff_best_{N}.csv"
+    shell:
+        """
+            cat {input} | head -n {wildcards.N} > {output}
+        """
+
+rule worst_N_diff:
+    input:
+        "diff/{tool}_diff.csv"
+    output:
+        "diff/{tool}_diff_worst_{N}.csv"
+    shell:
+        """
+            cat {input} | tail -n {wildcards.N} > {output}
+        """
+
+rule smallest_abs_diff_N:
+    input:
+        "diff/{tool}_diff.csv"
+    output:
+        "diff/{tool}_diff_smallest_abs_{N}.csv"
+    shell:
+        """
+            cat {input} |  \
+            awk -F'\t' 'NR==1 {{print; next}} {{print $1 "\t" ($2 >= 0 ? $2 : -$2)}}' | \
+            sort -k2,2n | \
+            head -n {wildcards.N} > {output}
+        """
+
+rule filter_dataset:
+    input:
+        dataset="GEP.count.exp_filter.ltmm.csv",
+        diff_file="diff/{tool}_diff_{state}.csv"
+    output:
+        "filtered/GEP.count.ltmm.{tool}.{state}.csv"
+    shell: 
+        """
+            mkdir -p filtered
+            cat {input.diff_file} | filter_tab.py {input.dataset} > {output}
+        """
+
+rule all_filtered:
+    input:
+        "GEP.count.ltmm.deseq2.best_5.csv"
+        "GEP.count.ltmm.edger.best_5.csv"
+        "GEP.count.ltmm.deseq2.worst_5.csv"
+        "GEP.count.ltmm.edger.worst_5.csv"

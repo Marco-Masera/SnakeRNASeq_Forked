@@ -79,7 +79,6 @@ if (nchar(opt$number_replicates) == 0) {
 	stop("Please specify the -n value")
 }
 opt$number_replicates=as.integer(opt$number_replicates)
-
 if(nchar(opt$factorial)==0){
   ### I take now the design FORMULA and the remaning will be the contrasts (a list of all of them)
   formula = shift_fn(args)
@@ -215,6 +214,7 @@ if (opt$tool=="limma"){
     .res = .res[order(.res$pvalue,decreasing=F),]
     .top = as.data.frame(.res)
   })
+
 } else{
 	stop(paste("Invalid value for option -t (",opt$tool,")"))
 }

@@ -57,11 +57,11 @@ STAR:
 
 # DGE ---
 DGE:
-    DGE_TOOL: edger
+    DGE_TOOL: deseq2
     #e.g. DGE_TOOL:=limma|edger|deseq2
 
     LIMMA_CONTRASTS:
-      comparison: "Pre-On"
+      comparison: "adipose-visceral"
     #e.g. LIMMA_CONTRASTS:
         # contrast_name: "contrast"
         # KO_vs_WT: "(KO.ND+KO.HFD)-(WT.ND+WT.HFD)"

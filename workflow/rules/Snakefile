@@ -6,6 +6,9 @@
 # --------------#
 import os
 PRJ_ROOT=os.environ.get("PRJ_ROOT")
+# Samples ---
+SAMPLES, = glob_wildcards("fastq/{sample}_R1.fastq.gz")
+
 if os.path.exists("Snakefile_versioned.sk"):
 	include: "Snakefile_versioned.sk"
 
@@ -59,8 +62,6 @@ elif config["LAYOUT"] == "PAIRED":
 STAR_VERSION = shell("STAR --version", read=True).strip()
 STAR_GENOME_DIR = GENCODE_DIR+"/"+config["GENCODE"]["GENOME"]+".star_index/"+STAR_VERSION
 
-# Samples ---
-SAMPLES, = glob_wildcards("fastq/{sample}_R1.fastq.gz")
 
 
 include: "../../workflow/rules/generic_rules.smk"
@@ -72,9 +73,9 @@ rule all:
 	input: 
 		"GEP.count.gz",
 		"GEP.count.exp_filter.ltmm.gz.xlsx",
-		"multiqc_report.html",
-		"multiqc_report.rseqc.html",
-		"usable_reads.txt.xlsx" 
+		#"multiqc_report.html",
+		#"multiqc_report.rseqc.html",
+		#"usable_reads.txt.xlsx" 
 
 rule ALL_infer_experiment:
 	input: 
@@ -440,22 +441,22 @@ rule featurecounts:
 	shell: """
 		featureCounts {input.bam} -o {output.counts} -a {input.annotation_gtf} {params.params} --tmpDir {params.tmpdir} -T {params.cores}
 		"""
-
-rule featurecounts_ribo_ex:
-	input:
-		file_all=expand("star/{sample}.ribo.ex.bam.featurecounts.count", sample=SAMPLES),
-		file_translate=expand("star/{sample}.ribo.ex.bam.featurecounts.count", sample=SAMPLES[0])
-	output:
-		"featurecounts.ribo.ex.count.gz"
-	shell: """
-		matrix_reduce '*.ribo.ex.bam.featurecounts.count' -l '{input.file_all}' \
-		| grep -v '^#' \
-		| fasta2tab \
-		| bawk '$2!="Geneid" {{print $2,$1,$8}}' \
-		| tab2matrix -r Geneid \
-		| translate -a <(cut -f -6 {input.file_translate} | unhead) 1 \
-		| gzip > {output}
-		"""
+if (len(SAMPLES)>0):
+	rule featurecounts_ribo_ex:
+		input:
+			file_all=expand("star/{sample}.ribo.ex.bam.featurecounts.count", sample=SAMPLES),
+			file_translate=expand("star/{sample}.ribo.ex.bam.featurecounts.count", sample=SAMPLES[0])
+		output:
+			"featurecounts.ribo.ex.count.gz"
+		shell: """
+			matrix_reduce '*.ribo.ex.bam.featurecounts.count' -l '{input.file_all}' \
+			| grep -v '^#' \
+			| fasta2tab \
+			| bawk '$2!="Geneid" {{print $2,$1,$8}}' \
+			| tab2matrix -r Geneid \
+			| translate -a <(cut -f -6 {input.file_translate} | unhead) 1 \
+			| gzip > {output}
+			"""
 
 rule featurecounts_ribo_ex_summary:
 	input:
