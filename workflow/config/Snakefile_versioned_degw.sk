@@ -79,7 +79,19 @@ rule filter_dataset:
 
 rule all_filtered:
     input:
-        "GEP.count.ltmm.deseq2.best_5.csv"
-        "GEP.count.ltmm.edger.best_5.csv"
-        "GEP.count.ltmm.deseq2.worst_5.csv"
-        "GEP.count.ltmm.edger.worst_5.csv"
+        "filtered/GEP.count.ltmm.deseq2.best_1000.csv"
+        "filtered/GEP.count.ltmm.edger.best_1000.csv"
+        "filtered/GEP.count.ltmm.deseq2.worst_1000.csv"
+        "filtered/GEP.count.ltmm.edger.worst_1000.csv"
+
+
+rule plot_pvalue:
+    input:
+        degw="DGE/degw_contrast.csv",
+        edger="DGE/edger.toptable_clean.ALL_contrast.mark_seqc.header_added.csv",
+        deseq="DGE/deseq2.toptable_clean.ALL_contrast.mark_seqc.header_added.csv"
+    output:
+        "pvalues_scatterplot.png",
+        "pvalues_lines.png"
+    shell:
+        """pvalue_scatterplot.py {input.degw} {input.edger} {input.deseq}"""

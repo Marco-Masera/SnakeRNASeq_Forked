@@ -57,7 +57,7 @@ STAR:
 
 # DGE ---
 DGE:
-    DGE_TOOL: deseq2
+    DGE_TOOL: edger
     #e.g. DGE_TOOL:=limma|edger|deseq2
 
     LIMMA_CONTRASTS:

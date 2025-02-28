@@ -32,11 +32,16 @@ rule run_degw:
     output:
         "degw_contrast.csv"
     params:
-        formula = config["DGE"]["LIMMA_DESIGN_FORMULA"]
+        formula = config["DGE"]["LIMMA_DESIGN_FORMULA"],
+        min_cpm = config["DGE"]["EXPRESSED_GENES_MIN_CPM"],
+        min_samples = config["DGE"]["MIN_NUM_OF_EXPRESSED_SAMPLE"]
+
     shell:
         """
+            export min_sample_ratio=$(echo "scale=6; {params.min_samples} / $(wc -l < ../metadata.txt)" | bc)
+            export min_sample_ratio="0$min_sample_ratio"
             echo $(tail -n +2 {input.metadata} | cut -f2 | sort | uniq) |  \
-            xargs bash -c 'DegWilcox {input.expression} {input.metadata} --condition=condition --g1=$1 --g2=$2 > {output}' _ 
+            xargs bash -c 'DegWilcox {input.expression} {input.metadata} --min_exp {params.min_cpm} --min_samples_ratio $min_sample_ratio --condition=condition --g1=$1 --g2=$2 > {output}' _ 
         """
 
 rule get_eset:

@@ -99,7 +99,8 @@ group2 <- counts_cpm[, metadata[[opt$condition]] == opt$g2]
 
 min_samples_g1 <- ceiling(length(group1_samples) * opt$min_samples_ratio)
 min_samples_g2 <- ceiling(length(group2_samples) * opt$min_samples_ratio)
-
+# 10  =  length(group1_samples) * X
+# X = 10 / (len*2)   #abs value in other pipeline refers to entire dataset - not split
 gene_exp_g1 <- group1[rowSums(group1 >= opt$min_exp) >= min_samples_g1, ]
 gene_exp_g2 <- group2[rowSums(group2 >= opt$min_exp) >= min_samples_g2, ]
 
