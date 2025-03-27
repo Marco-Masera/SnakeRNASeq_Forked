@@ -187,21 +187,63 @@ if (opt$tool=="limma"){
 	})
 	names(top.list)=colnames(contrasts)
 } else if(opt$tool=="edger" || opt$medip==TRUE){
-	ey = estimateDisp(y,design,robust=opt$robust) # equivalente a v = voom(y), sort of... to estimate disp.
-	pdf('eset.plotBVC.pdf')
-	plotBCV(ey)
-	dev.off()
-	efit = glmQLFit(ey,design,robust=opt$robust) # equivalente a fit = lmFit(v,design)
-        if(opt$anova_like){
-                anova_like = as.data.frame(topTags(glmQLFTest(efit, contrast=contrasts),adjust.method = "BH",sort.by = "p",n = Inf)$table)
-        }
-	top.list = apply(contrasts,2,function(x) {
-	  #.elrt = glmQLFTest(efit,contrast=x)
-	  .elrt = glmQLFTest(efit,contrast=x)
-	  .top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
-	  })
-	#elrt = glmLRT(efit,contrast=contrasts[,2]) # equivalente a fit2 = contrasts.fit(fit,cmat)
-	#topedge = lapply(topTags(elrt) # con defaults, per essere veloce...
+
+	pipeline <- "CLASSIC" #CLASSIC, QL, GLM_LRT, GLM_TREAT, CLASSIC
+
+	if (pipeline != "CLASSIC"){
+		ey = estimateDisp(y,design,robust=opt$robust) # equivalente a v = voom(y), sort of... to estimate disp.
+		pdf('eset.plotBVC.pdf')
+		plotBCV(ey)
+		dev.off()
+	}
+
+	if (pipeline == "CLASSIC"){
+
+		top.list = apply(contrasts,2, function(x) {
+			contrast_name = colnames(contrasts)[which(contrasts[,colnames(contrasts)] == x)[1]]
+			labels <- strsplit(contrasts.args, "-")[[1]]
+			group_labels = colnames(design)
+			group_a_index = which(group_labels == labels[1])
+			group_b_index = which(group_labels == labels[2])
+			groups <- rep("", ncol(y))
+			for (i in 1:nrow(design)){
+				if (design[i, group_a_index] == 1){
+					groups[i] <- labels[1]
+				} else if (design[i, group_b_index] == 1){
+					groups[i] <- labels[2]
+				}
+			}
+			dge_list <- DGEList(counts=y, group=groups)
+			disp = estimateDisp(y,design[,c(group_a_index, group_b_index)],robust=opt$robust)
+			efit = exactTest(dge_list, labels, dispersion=disp$tagwise.dispersion) 
+			.r = as.data.frame(topTags(efit,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+		efit = NULL;
+
+	} else if (pipeline == "QL"){
+		efit = glmQLFit(ey,design,robust=opt$robust)
+		if(opt$anova_like){
+				anova_like = as.data.frame(topTags(glmQLFTest(efit, contrast=contrasts),adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		}
+		top.list = apply(contrasts,2, function(x) {
+			.elrt = glmQLFTest(efit,contrast=x)
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	} else if (pipeline == "GLM_LRT"){
+		efit = glmFit(ey,design,robust=opt$robust)
+		top.list = apply(contrasts,2,function(x) {
+			.elrt = glmLRT(efit) #TODO: must use x
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	} else if (pipeline == "GLM_TREAT"){
+		efit = glmFit(ey,design,robust=opt$robust)
+		top.list = apply(contrasts,2,function(x) {
+			.elrt = glmTreat(efit,contrast=x)
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	}
+	
+
 } else if(opt$tool=="deseq2"){
 	# Build the dds object for deseq2 analysis
 	# The formula to the dds object has to be changed to include the intercept, otherwise the betaPrior cannot be TRUE.

@@ -170,8 +170,9 @@ rule exp_in_cond:
     output:
         "{path}.toptable_clean.ALL_contrast.mark_seqc.exp_in_condition.header_added.gz"
     shell:"""
-        bawk '$Pvalue_adj!="NA"' {input.deg_out}| translate -a <(zcat {input.gep}) 2 | gzip > {output}
+        (bawk '$Pvalue_adj!="NA"' {input.deg_out}| translate -a <(zcat {input.gep}) 2 || true) | gzip > {output}
     """
+#bawk '$Pvalue_adj!="NA"' {input.deg_out}| translate -a <(zcat {input.gep}) 2 | gzip > {output}
 
 rule filter_genes:
     input: 

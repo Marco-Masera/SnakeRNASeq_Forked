@@ -12,12 +12,11 @@ SAMPLES, = glob_wildcards("fastq/{sample}_R1.fastq.gz")
 if os.path.exists("Snakefile_versioned.sk"):
 	include: "Snakefile_versioned.sk"
 
-configfile: "config_DGE.yaml"
+configfile: "DGE/config.yaml"
 configfile: "config.yaml"
 
 REFERENCE_ROOT=os.environ.get("REFERENCE_ROOT")
 
-include: "../../workflow/rules/Snakefile"
 # GENERAL SETUP ---
 CONDA_ROOT=config["CONDA_ROOT"]
 CONDA_ACTIVATE="set +u; source %s/etc/profile.d/conda.sh ; conda activate ; conda activate" % config["CONDA_ROOT"]
