@@ -58,7 +58,7 @@ rule get_rdata:
     input:
         "eset.rda"
     output:
-        config["DGE"]["DGE_TOOL"] + ".RData"
+        "{tool}.RData"
     params:
         dge_tool = config["DGE"]["DGE_TOOL"],
         min_cpm = config["DGE"]["EXPRESSED_GENES_MIN_CPM"],
@@ -84,9 +84,9 @@ rule test:
 #$(addprefix $(DGE_TOOL).top.ALL.contrast., $(addsuffix .gz, $(LIMMA_CONTRASTS_NAMES))): $(DGE_TOOL).top.ALL.contrast.%.gz: $(DGE_TOOL).RData
 rule run_DGE:
     input:
-        config["DGE"]["DGE_TOOL"] + ".RData"
+        "{tool}.RData"
     output:
-        config["DGE"]["DGE_TOOL"] + ".toptable_clean.contrast_{contrast}.gz"
+        "{tool}.toptable_clean.contrast_{contrast}.gz"
     params:
         contrast_names = list(config["DGE"]["LIMMA_CONTRASTS"].keys()),
         contrasts = list(config["DGE"]["LIMMA_CONTRASTS"].values()),
@@ -102,7 +102,7 @@ rule run_DGE:
         echo $C;\
         if [[ {params.dge_tool} == "limma" ]]; then\
             r -e "load('{input}');write.table(file='{output}.tmp',top.list[['$C']][,c('logFC','P.Value','adj.P.Val')], sep='\t', row.names=TRUE, quote=FALSE)"; \
-        elif [[ {params.dge_tool} == "edger" ]]; then \
+        elif [[ {params.dge_tool} =~ ^edger_(classic|ql|glm_lrt|glm_treat)$ ]]; then \
             r -e "load('{input}');write.table(file='{output}.tmp',top.list[['$C']][,c('logFC','PValue','FDR')], sep='\t', row.names=TRUE, quote=FALSE)"; \
         elif [[ {params.dge_tool} == "deseq2" ]]; then \
             r -e "load('{input}');write.table(file='{output}.tmp',top.list[['$C']][,c('log2FoldChange','pvalue','padj')], sep='\t', row.names=TRUE, quote=FALSE)"; \

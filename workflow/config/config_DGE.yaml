@@ -57,8 +57,8 @@ STAR:
 
 # DGE ---
 DGE:
-    DGE_TOOL: edger
-    #e.g. DGE_TOOL:=limma|edger|deseq2
+    DGE_TOOL: edger_classic
+    #e.g. DGE_TOOL:=limma|deseq2|edger_classic|edger_ql|edger_glm_lrt|edger_glm_treat
 
     LIMMA_CONTRASTS:
       comparison: "AFB-EUB"
