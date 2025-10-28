@@ -17,7 +17,7 @@ FEATURECOUNTS_PARAM: -t exon -g gene_name
 #strandnes and paired-end handled in config.smk
 # -O allowMultiOverlap
 
-FASTQ_FILTERING: fastq
+FASTQ_FILTERING: fastp
 
 # GENCODE ---
 GENCODE:
@@ -54,6 +54,7 @@ DGE:
   #e.g. DGE_TOOL:=limma|edger|deseq2
 
     LIMMA_CONTRASTS: 
+<<<<<<< HEAD:local/config/config_v1.yaml
         - "sh_untreated-ctrl_untreated" 
         - "sh_4h-ctrl_4h" 
         - "sh_24h-ctrl_24h" 
@@ -75,6 +76,14 @@ DGE:
         - "sh_res_02-ctrl_untreated" 
         - "sh_res_08-ctrl_untreated" 
         - "sh_res_16-ctrl_untreated"
+=======
+        - "het_mutant-wt" 
+        - "PRPF31-wt" 
+        - "SINEUP1-wt" 
+        - "undetermined-wt" 
+        - "PRPF31-het_mutant"
+        - "SINEUP1-het_mutant"
+>>>>>>> rnaSeqForDEGW:workflow/config/config_v2.yaml
     #e.g. LIMMA_CONTRASTS: 
         #- "(KO.ND+KO.HFD)-(WT.ND+WT.HFD)"
         #- "(WT.HFD+KO.HFD)-(WT.ND+KO.ND)" 
@@ -83,6 +92,7 @@ DGE:
     #e.g. LIMMA_CONTRASTS: "KO-WT"
 
     LIMMA_CONTRASTS_NAMES: 
+<<<<<<< HEAD:local/config/config_v1.yaml
         - untreated 
         - vem_4h 
         - vem_24h
@@ -104,6 +114,14 @@ DGE:
         - sh_res_0.2_vs_ctrl_untreated 
         - sh_res_0.8_vs_ctrl_untreated
         - sh_res_1.6_vs_ctrl_untreated
+=======
+        - het_mutantwt 
+        - PRPF31-wt 
+        - SINEUP1-wt
+        - undetermined-wt 
+        - PRPF31-het_mutant
+        - SINEUP1-het_mutant
+>>>>>>> rnaSeqForDEGW:workflow/config/config_v2.yaml
   # NB they must follow the same order used in LIMMA_CONTRASTS / LIMMA_DESIGN_FORMULA
   #e.g. LIMMA_CONTRASTS_NAMES:
         #- genotype 
@@ -117,7 +135,7 @@ DGE:
   #NB: do not comment LIMMA_FACTORS but leave empty if not required
   #e.g. LIMMA_FACTORS:=-f "genotype treatment"
 
-    MIN_NUM_OF_EXPRESSED_SAMPLE: 4
+    MIN_NUM_OF_EXPRESSED_SAMPLE: 3
     EXPRESSED_GENES_MIN_CPM: 1
     DGE_CONDITION: "condition" 
 

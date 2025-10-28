@@ -1,2 +1,4 @@
 dataset/*
 local/env/conda
+workflow/env/env
+results/*

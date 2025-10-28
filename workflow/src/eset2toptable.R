@@ -17,7 +17,7 @@ option_list <- list(
 	make_option(c("-l","--min_expr"),action="store",default=1, dest="min_expr", metavar = "MIN_EXPR", help="The minimun cpm value to consider a gene present in a single sample [default \"%default\"]"),
 	make_option(c("-n","--number_replicates"),action="store",default="", dest="number_replicates", metavar = "NUMBER_REPLICATES", help="The number of replicates per group of samples to be used in the design. This number will be used to set the minimum amount of samples in which a gene have to pass MIN_EXPR cpm to be considered as expressed [default \"%default\"]"),
 	make_option(c("-f","--factorial"),action="store", default="", dest="factorial", metavar= "FACTORIAL", help="Factorial 2x2 design. FACTORIAL contains the name of the column containing the factors to be combined in the design separated by a space [default \"%default\"]"),
-	make_option(c("-t","--tool"), action="store", default="limma", dest="tool",metavar="TOOL", help="Statistical tool to be used for differential expression analysis amongst 'limma','deseq2','edger' [default \"%default\"]"),
+	make_option(c("-t","--tool"), action="store", default="limma", dest="tool",metavar="TOOL", help="Statistical tool to be used for differential expression analysis amongst 'limma','deseq2', 'edger_classic', 'edger_ql' ,'edger_glm_lrt', 'edger_glm_treat' [default \"%default\"]"),
 	make_option(c("-e","--medip"), action="store_true", default=FALSE, help="If eset.rda comes from our counts_table2eset with -m (medip), eset2toptable will work with edgeR and ajust output to annotate peaks with 'ChIPpeakAnno' [default \"%default\"]"),
 	make_option(c("-r","--trend"), action="store_true", default=FALSE, help="trend option of limma eBayes [default \"%default\"]"),
 	make_option(c("-z","--normalization"), action="store", default="TMM", help="edger normalization tyope, available values: TMM, upperquartile, RLE, none [default \"%default\"]"),
@@ -58,11 +58,13 @@ arguments <- parse_args(parser, positional_arguments = c(1,Inf))
 args <- arguments$args
 opt<-arguments$options
 
+is_edger = opt$tool %in% c("edger_classic", "edger_ql", "edger_glm_lrt", "edger_glm_treat")
+
 if(opt$microarray && opt$tool!="limma"){
   stop("ERROR: -m option requires -t limma")
 }
 
-if(opt$medip){opt$tool="edger"}
+if(opt$medip){opt$tool="edger_ql"}
 
 if(nchar(opt$factorial)>0 && opt$tool!="limma"){
   stop("ERROR: -f option requires -t limma")
@@ -79,7 +81,6 @@ if (nchar(opt$number_replicates) == 0) {
 	stop("Please specify the -n value")
 }
 opt$number_replicates=as.integer(opt$number_replicates)
-
 if(nchar(opt$factorial)==0){
   ### I take now the design FORMULA and the remaning will be the contrasts (a list of all of them)
   formula = shift_fn(args)
@@ -153,7 +154,7 @@ if (exists("nfactors")){
 }
 
 
-if (!opt$microarray && (opt$tool=="limma" || opt$tool=="edger")) {
+if (!opt$microarray && (opt$tool=="limma" || is_edger)) {
 	y.all<-DGEList(counts=exprs(eset),genes=fData(eset))
 	isexpr= rowSums(cpm(y.all)>opt$min_expr) >= opt$number_replicates
 	y <- y.all[isexpr,,keep.lib.sizes=FALSE]
@@ -187,22 +188,63 @@ if (opt$tool=="limma"){
 	  	.top = topTable(fit, coef=x,number = Inf,adjust.method = "BH",sort.by = "p")
 	})
 	names(top.list)=colnames(contrasts)
-} else if(opt$tool=="edger" || opt$medip==TRUE){
-	ey = estimateDisp(y,design,robust=opt$robust) # equivalente a v = voom(y), sort of... to estimate disp.
-	pdf('eset.plotBVC.pdf')
-	plotBCV(ey)
-	dev.off()
-	efit = glmQLFit(ey,design,robust=opt$robust) # equivalente a fit = lmFit(v,design)
-        if(opt$anova_like){
-                anova_like = as.data.frame(topTags(glmQLFTest(efit, contrast=contrasts),adjust.method = "BH",sort.by = "p",n = Inf)$table)
-        }
-	top.list = apply(contrasts,2,function(x) {
-	  #.elrt = glmQLFTest(efit,contrast=x)
-	  .elrt = glmQLFTest(efit,contrast=x)
-	  .top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
-	  })
-	#elrt = glmLRT(efit,contrast=contrasts[,2]) # equivalente a fit2 = contrasts.fit(fit,cmat)
-	#topedge = lapply(topTags(elrt) # con defaults, per essere veloce...
+} else if(is_edger || opt$medip==TRUE){
+
+	#'edger_classic', 'edger_ql' ,'edger_glm_lrt', 'edger_glm_treat'
+
+	if (opt$tool != "edger_classic"){
+		ey = estimateDisp(y,design,robust=opt$robust) # equivalente a v = voom(y), sort of... to estimate disp.
+		pdf('eset.plotBVC.pdf')
+		plotBCV(ey)
+		dev.off()
+	}
+
+	if (opt$tool == "edger_classic"){
+		top.list = apply(contrasts,2, function(x) {
+			contrast_name = colnames(contrasts)[which(contrasts[,colnames(contrasts)] == x)[1]]
+			labels <- strsplit(contrasts.args, "-")[[1]]
+			group_labels = colnames(design)
+			group_a_index = which(group_labels == labels[1])
+			group_b_index = which(group_labels == labels[2])
+			groups <- rep("", ncol(y))
+			for (i in 1:nrow(design)){
+				if (design[i, group_a_index] == 1){
+					groups[i] <- labels[1]
+				} else if (design[i, group_b_index] == 1){
+					groups[i] <- labels[2]
+				}
+			}
+			dge_list <- DGEList(counts=y, group=groups)
+			disp = estimateDisp(y,design[,c(group_a_index, group_b_index)],robust=opt$robust)
+			efit = exactTest(dge_list, labels, dispersion=disp$tagwise.dispersion) 
+			.r = as.data.frame(topTags(efit,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+		efit = NULL;
+
+	} else if (opt$tool == "edger_ql"){
+		efit = glmQLFit(ey,design,robust=opt$robust)
+		if(opt$anova_like){
+				anova_like = as.data.frame(topTags(glmQLFTest(efit, contrast=contrasts),adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		}
+		top.list = apply(contrasts,2, function(x) {
+			.elrt = glmQLFTest(efit,contrast=x)
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	} else if (opt$tool == "edger_glm_lrt"){
+		efit = glmFit(ey,design,robust=opt$robust)
+		top.list = apply(contrasts,2,function(x) {
+			.elrt = glmLRT(efit) #TODO: must use x
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	} else if (opt$tool == "edger_glm_treat"){
+		efit = glmFit(ey,design,robust=opt$robust)
+		top.list = apply(contrasts,2,function(x) {
+			.elrt = glmTreat(efit,contrast=x)
+			.top = as.data.frame(topTags(.elrt,adjust.method = "BH",sort.by = "p",n = Inf)$table)
+		})
+	}
+	
+
 } else if(opt$tool=="deseq2"){
 	# Build the dds object for deseq2 analysis
 	# The formula to the dds object has to be changed to include the intercept, otherwise the betaPrior cannot be TRUE.
@@ -215,6 +257,7 @@ if (opt$tool=="limma"){
     .res = .res[order(.res$pvalue,decreasing=F),]
     .top = as.data.frame(.res)
   })
+
 } else{
 	stop(paste("Invalid value for option -t (",opt$tool,")"))
 }
@@ -227,7 +270,7 @@ print(opt$tool)
 if(!opt$microarray){
   if(opt$tool=="limma"){
     save(list=c("TS","y","v","voom","my_rpkm","fit_init","fit","top.list"),file="/dev/stdout")
-  } else if(opt$tool=="edger"){
+  } else if(is_edger){
     save(list=c("TS","y","efit","top.list","anova_like"),file="/dev/stdout")
   } else if(opt$tool=="deseq2"){
     save(list=c("TS","dds","deseq","top.list"),file="/dev/stdout")

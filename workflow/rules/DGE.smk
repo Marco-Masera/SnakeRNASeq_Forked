@@ -153,6 +153,7 @@ rule filter_significant_genes:
         zcat {input.deg_out} | filter_1col --header 1 2 <(bawk '$significance!=0 {{print $2}}' {input.significance}) | gzip > {output}
     """
 
+<<<<<<< HEAD:local/rules/DGE.smk
 rule DEG_count_matrix:
     input:
         "{path}.toptable_clean.ALL_contrast.mark_seqc.gz"
@@ -161,3 +162,43 @@ rule DEG_count_matrix:
     shell:"""
         bawk '{{print $contrast,$significance}}' {input} | symbol_count | tab2matrix -r contrast > {output}
     """
+=======
+    rule count_significance:
+    input:
+        "edger.toptable_clean.ALL_contrast.mark_seqc.gz"
+    output:
+        "edger.toptable_clean.ALL_contrast.mark_seqc.count"
+    shell:
+        """
+        bawk '{{print $1, $6}}' {input} | symbol_count | tab2matrix -r contrast > {output}
+        """
+
+# -------------- #
+# META           #
+# -------------- #
+
+#TODO move in correct .mk after https://www.pivotaltracker.com/story/show/188249716
+"""
+.META: *.toptable_clean.ALL_contrast.*mark_seqc.*gz 
+	1	contrast
+	2	GeneID
+	3	logFC
+	4	Pvalue
+	5	Pvalue_adj
+	6	significance
+
+.META: *.toptable_clean.ALL_contrast.*gz 
+	1	contrast
+	2	GeneID
+	3	logFC
+	4	Pvalue
+	5	Pvalue_adj
+
+.META: *.toptable_clean*.gz
+	1	GeneID
+	2	logFC
+	3	Pvalue
+	4	Pvalue_adj
+
+"""
+>>>>>>> rnaSeqForDEGW:workflow/rules/DGE.smk
