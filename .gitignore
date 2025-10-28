@@ -2,3 +2,4 @@ dataset/*
 local/env/conda
 workflow/env/env
 results/*
+!results/gtex_brain_amygdala_spinal
